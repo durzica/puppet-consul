@@ -8,13 +8,14 @@ class consul::params {
   $install_method        = 'url'
   $package_name          = 'consul'
   $package_ensure        = 'latest'
-  $download_url_base     = 'https://dl.bintray.com/mitchellh/consul/'
+  $download_url_base     = 'https://releases.hashicorp.com/consul/'
   $download_extension    = 'zip'
   $ui_package_name       = 'consul_ui'
   $ui_package_ensure     = 'latest'
-  $ui_download_url_base  = 'https://dl.bintray.com/mitchellh/consul/'
+  $ui_download_url_base  = 'https://releases.hashicorp.com/consul/'
   $ui_download_extension = 'zip'
   $version               = '0.5.2'
+  $config_mode           = '0660'
 
   case $::architecture {
     'x86_64', 'amd64': { $arch = 'amd64' }
@@ -54,8 +55,14 @@ class consul::params {
     }
   } elsif $::operatingsystem == 'Archlinux' {
     $init_style = 'systemd'
-  } elsif $::operatingsystem == 'SLES' {
-    $init_style = 'sles'
+  } elsif $::operatingsystem == 'OpenSuSE' {
+    $init_style = 'systemd'
+  } elsif $::operatingsystem =~ /SLE[SD]/ {
+    if versioncmp($::operatingsystemrelease, '12.0') < 0 {
+      $init_style = 'sles'
+    } else {
+      $init_style = 'systemd'
+    }
   } elsif $::operatingsystem == 'Darwin' {
     $init_style = 'launchd'
   } elsif $::operatingsystem == 'Amazon' {

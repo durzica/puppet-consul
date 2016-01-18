@@ -8,3 +8,4 @@ log/
 *.iml
 vendor/
 .bundle/
+.DS_Store

@@ -18,7 +18,7 @@ Puppet::Type.newtype(:consul_acl) do
     defaultto 'client'
   end
 
-  newproperty(:acl_api_token) do
+  newparam(:acl_api_token) do
     desc 'Token for accessing the ACL API'
     validate do |value|
       raise ArgumentError, "ACL API token must be a string" if not value.is_a?(String)
@@ -36,8 +36,13 @@ Puppet::Type.newtype(:consul_acl) do
 
   newproperty(:id) do
     desc 'ID of token'
-    validate do |v|
-      raise(Puppet::Error, 'This is a read only property')
+  end
+
+  newparam(:port) do
+    desc 'consul port'
+    defaultto 8500
+    validate do |value|
+      raise ArgumentError, "The port number must be a number" if not value.is_a?(Integer)
     end
   end
 

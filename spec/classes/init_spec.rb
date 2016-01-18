@@ -84,21 +84,25 @@ describe 'consul' do
   end
 
   context "When installing via URL by default" do
-    it { should contain_staging__file('consul.zip').with(:source => 'https://dl.bintray.com/mitchellh/consul/0.5.2_linux_amd64.zip') }
+    it { should contain_staging__file('consul-0.5.2.zip').with(:source => 'https://releases.hashicorp.com/consul/0.5.2/consul_0.5.2_linux_amd64.zip') }
+    it { should contain_file('/usr/local/bin/consul').that_notifies('Class[consul::run_service]') }
+    #it { should contain_notify(['Class[consul::run_service]']) }
   end
 
   context "When installing via URL by with a special version" do
     let(:params) {{
       :version   => '42',
     }}
-    it { should contain_staging__file('consul.zip').with(:source => 'https://dl.bintray.com/mitchellh/consul/42_linux_amd64.zip') }
+    it { should contain_staging__file('consul-42.zip').with(:source => 'https://releases.hashicorp.com/consul/42/consul_42_linux_amd64.zip') }
+    it { should contain_file('/usr/local/bin/consul').that_notifies('Class[consul::run_service]') }
   end
 
   context "When installing via URL by with a custom url" do
     let(:params) {{
       :download_url   => 'http://myurl',
     }}
-    it { should contain_staging__file('consul.zip').with(:source => 'http://myurl') }
+    it { should contain_staging__file('consul-0.5.2.zip').with(:source => 'http://myurl') }
+    it { should contain_file('/usr/local/bin/consul').that_notifies('Class[consul::run_service]') }
   end
 
 
@@ -129,7 +133,7 @@ describe 'consul' do
     it { should_not contain_package('consul') }
     it { should_not contain_package('consul_ui') }
     it { should_not contain_staging__file('consul.zip') }
-    it { should_not contain_staging__file('consul_web_ui.zip') }
+    it { should_not contain_staging__file('consul_web_ui-0.5.2.zip') }
   end
 
   context "When installing UI via URL by default" do
@@ -139,20 +143,44 @@ describe 'consul' do
         'ui_dir'   => '/dir1/dir2',
       },
     }}
-    it { should contain_staging__file('consul_web_ui.zip').with(:source => 'https://dl.bintray.com/mitchellh/consul/0.5.2_web_ui.zip') }
-    it { should contain_file('/dir1/dir2').that_requires('Staging::Deploy[consul_web_ui.zip]') }
+    it { should contain_staging__deploy('consul_web_ui-0.5.2.zip').with(:source => 'https://releases.hashicorp.com/consul/0.5.2/consul_0.5.2_web_ui.zip') }
+    it { should contain_file('/dir1/dir2').that_requires('Staging::Deploy[consul_web_ui-0.5.2.zip]') }
     it { should contain_file('/dir1/dir2').with(:ensure => 'symlink') }
   end
 
-  context "When installing UI via URL by with a special version" do
+  context "When installing UI via URL with a special version" do
     let(:params) {{
-      :version => '42',
+      :version     => '42',
       :config_hash => {
         'data_dir' => '/dir1',
         'ui_dir'   => '/dir1/dir2',
       },
     }}
-    it { should contain_staging__file('consul_web_ui.zip').with(:source => 'https://dl.bintray.com/mitchellh/consul/42_web_ui.zip') }
+    it { should contain_staging__deploy('consul_web_ui-42.zip').with(:source => 'https://releases.hashicorp.com/consul/42/consul_42_web_ui.zip') }
+  end
+
+  context "When installing UI via URL when version < 0.6.0" do
+    let(:params) {{
+      'version'    => '0.5.99',
+      :config_hash => {
+        'data_dir' => '/dir1',
+        'ui_dir'   => '/dir1/dir2',
+      },
+    }}
+    it { should contain_staging__deploy('consul_web_ui-0.5.99.zip').with(:creates => %r{/dist$}) }
+    it { should contain_file('/dir1/dir2').with(:target => %r{/dist$}) }
+  end
+
+  context "When installing UI via URL when version >= 0.6.0" do
+    let(:params) {{
+      'version'    => '0.6.0',
+      :config_hash => {
+        'data_dir' => '/dir1',
+        'ui_dir'   => '/dir1/dir2',
+      },
+    }}
+    it { should contain_staging__deploy('consul_web_ui-0.6.0.zip').with(:creates => %r{/index\.html$}) }
+    it { should contain_file('/dir1/dir2').with(:target => %r{_web_ui$}) }
   end
 
   context "When installing UI via URL by with a custom url" do
@@ -163,7 +191,7 @@ describe 'consul' do
         'ui_dir'   => '/dir1/dir2',
       },
     }}
-    it { should contain_staging__deploy('consul_web_ui.zip').with(:source => 'http://myurl') }
+    it { should contain_staging__deploy('consul_web_ui-0.5.2.zip').with(:source => 'http://myurl') }
   end
 
   context "By default, a user and group should be installed" do
@@ -269,7 +297,7 @@ describe 'consul' do
     it { should contain_file('consul config.json').with_content(/"server": true/) }
     it { should contain_file('consul config.json').with_content(/"http": -1,/) }
     it { should contain_file('consul config.json').with_content(/"https": 8500/) }
-    it { should contain_file('consul config.json').with_content(/"ports": {/) }
+    it { should contain_file('consul config.json').with_content(/"ports": \{/) }
   end
 
   context "When asked not to manage the user" do
@@ -321,6 +349,19 @@ describe 'consul' do
     it { should contain_group('custom_consul_group').with(:ensure => :present) }
     it { should contain_file('/etc/init/consul.conf').with_content(/env USER=custom_consul_user/) }
     it { should contain_file('/etc/init/consul.conf').with_content(/env GROUP=custom_consul_group/) }
+  end
+
+  context "Config with custom file mode" do
+    let(:params) {{
+      :user  => 'custom_consul_user',
+      :group => 'custom_consul_group',
+      :config_mode  => '0600',
+    }}
+    it { should contain_file('consul config.json').with(
+      :owner => 'custom_consul_user',
+      :group => 'custom_consul_group',
+      :mode  => '0600'
+    )}
   end
 
   context "When consul is reloaded" do
@@ -647,6 +688,33 @@ describe 'consul' do
     }}
 
     it { should contain_class('consul').with_init_style('debian') }
+  end
+
+  context "On opensuse" do
+    let(:facts) {{
+      :operatingsystem => 'OpenSuSE',
+      :operatingsystemrelease => '13.1'
+    }}
+
+    it { should contain_class('consul').with_init_style('systemd') }
+  end
+
+  context "On SLED" do
+    let(:facts) {{
+      :operatingsystem => 'SLED',
+      :operatingsystemrelease => '11.4'
+    }}
+
+    it { should contain_class('consul').with_init_style('sles') }
+  end
+
+  context "On SLES" do
+    let(:facts) {{
+      :operatingsystem => 'SLES',
+      :operatingsystemrelease => '12.0'
+    }}
+
+    it { should contain_class('consul').with_init_style('systemd') }
   end
 
   # Config Stuff
