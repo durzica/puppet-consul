@@ -19,5 +19,5 @@ metadata:
 
 spec:
   type: other
-  owner: operations
+  owner: platform-ops
   lifecycle: experimental
